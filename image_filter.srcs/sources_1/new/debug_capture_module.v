@@ -136,23 +136,23 @@ module debug_capture_module
 
     // Decimation Counters
 
-    reg [15:0]  dec0     =  ~0;         // telemetry stream 0's decimation: every dec0 + 1 packet is accepted (0..65534, or 65535 to discard all packets)
-    reg [15:0]  dec0cnt  =  0;          // decimation counter (0 .. dec0)
+    reg [15:0]  dec0     =  0;          // telemetry stream 0's decimation: every dec0 packet is accepted (1..65535, or 0 to discard all packets)
+    reg [15:0]  dec0cnt  =  1;          // decimation counter (1 .. max(dec0, 1))
 
-    reg [15:0]  dec1     =  ~0;         // telemetry stream 1's decimation: every dec1 + 1 packet is accepted (0..65534, or 65535 to discard all packets)
-    reg [15:0]  dec1cnt  =  0;          // decimation counter (0 .. dec1)
+    reg [15:0]  dec1     =  0;          // telemetry stream 1's decimation: every dec1 packet is accepted (1..65535, or 0 to discard all packets)
+    reg [15:0]  dec1cnt  =  1;          // decimation counter (1 .. max(dec1, 1))
 
-    reg [15:0]  dec2     =  ~0;         // telemetry stream 2's decimation: every dec2 + 1 packet is accepted (0..65534, or 65535 to discard all packets)
-    reg [15:0]  dec2cnt  =  0;          // decimation counter (0 .. dec2)
+    reg [15:0]  dec2     =  0;          // telemetry stream 2's decimation: every dec2 packet is accepted (1..65535, or 0 to discard all packets)
+    reg [15:0]  dec2cnt  =  1;          // decimation counter (1 .. max(dec2, 1))
 
-    reg [15:0]  dec3     =  ~0;         // telemetry stream 3's decimation: every dec3 + 1 packet is accepted (0..65534, or 65535 to discard all packets)
-    reg [15:0]  dec3cnt  =  0;          // decimation counter (0 .. dec3)
+    reg [15:0]  dec3     =  0;          // telemetry stream 3's decimation: every dec3 packet is accepted (1..65535, or 0 to discard all packets)
+    reg [15:0]  dec3cnt  =  1;          // decimation counter (1 .. max(dec3, 1))
 
-    reg [15:0]  dec4     =  ~0;         // telemetry stream 4's decimation: every dec4 + 1 packet is accepted (0..65534, or 65535 to discard all packets)
-    reg [15:0]  dec4cnt  =  0;          // decimation counter (0 .. dec4)
+    reg [15:0]  dec4     =  0;          // telemetry stream 4's decimation: every dec4 packet is accepted (1..65535, or 0 to discard all packets)
+    reg [15:0]  dec4cnt  =  1;          // decimation counter (1 .. max(dec4, 1))
 
-    reg [15:0]  dec5     =  ~0;         // telemetry stream 5's decimation: every dec5 + 1 packet is accepted (0..65534, or 65535 to discard all packets)
-    reg [15:0]  dec5cnt  =  0;          // decimation counter (0 .. dec5)
+    reg [15:0]  dec5     =  0;          // telemetry stream 5's decimation: every dec5 packet is accepted (1..65535, or 0 to discard all packets)
+    reg [15:0]  dec5cnt  =  1;          // decimation counter (1 .. max(dec5, 1))
 
 
     // 128K x 32b Telemetry Buffer
@@ -307,12 +307,12 @@ module debug_capture_module
 
         case (state)
             STATE_INIT:     begin                   // Initialize
-                                dec0cnt   <=  0;
-                                dec1cnt   <=  0;
-                                dec2cnt   <=  0;
-                                dec3cnt   <=  0;
-                                dec4cnt   <=  0;
-                                dec5cnt   <=  0;
+                                dec0cnt   <=  1;
+                                dec1cnt   <=  1;
+                                dec2cnt   <=  1;
+                                dec3cnt   <=  1;
+                                dec4cnt   <=  1;
+                                dec5cnt   <=  1;
                                 count     <=  0;
                                 clearing  <=  0;
                                 // !!!NOTE Trigger-recording logic could be added here. Presently starts recording immediately.
@@ -322,9 +322,9 @@ module debug_capture_module
             STATE_LOOP:     state  <=  clearing ? STATE_INIT : STATE_PORT0;   // If requested to clear the buffer, clear it
 
             STATE_PORT0:    if (req0) begin         // Check telemetry port 0
-                                if (dec0cnt == 0 && ~&dec0)  ack0 <= 1;
+                                if (dec0cnt == 1 && dec0)  ack0 <= 1;
                                 else  nak0 <= 1;
-                                dec0cnt  <=  dec0cnt == dec0  ?  0  :  dec0cnt + 1;
+                                dec0cnt  <=  dec0cnt >= dec0  ?  1  :  dec0cnt + 1;
                                 state <= STATE_PORT0_;
                             end
                             else  state <= STATE_PORT1;
@@ -336,9 +336,9 @@ module debug_capture_module
                             end
 
             STATE_PORT1:    if (req1) begin         // Check telemetry port 1
-                                if (dec1cnt == 0 && ~&dec1)  ack1 <= 1;
+                                if (dec1cnt == 1 && dec1)  ack1 <= 1;
                                 else  nak1 <= 1;
-                                dec1cnt  <=  dec1cnt == dec1  ?  0  :  dec1cnt + 1;
+                                dec1cnt  <=  dec1cnt >= dec1  ?  1  :  dec1cnt + 1;
                                 state <= STATE_PORT1_;
                             end
                             else  state <= STATE_PORT2;
@@ -350,9 +350,9 @@ module debug_capture_module
                             end
 
             STATE_PORT2:    if (req2) begin     // Check telemetry port 2
-                                if (dec2cnt == 0 && ~&dec2)  ack2 <= 1;
+                                if (dec2cnt == 1 && dec2)  ack2 <= 1;
                                 else  nak2 <= 1;
-                                dec2cnt  <=  dec2cnt == dec2  ?  0  :  dec2cnt + 1;
+                                dec2cnt  <=  dec2cnt >= dec2  ?  1  :  dec2cnt + 1;
                                 state <= STATE_PORT2_;
                             end
                             else  state <= STATE_PORT3;
@@ -364,9 +364,9 @@ module debug_capture_module
                             end
 
             STATE_PORT3:    if (req3) begin     // Check telemetry port 3
-                                if (dec3cnt == 0 && ~&dec3)  ack3 <= 1;
+                                if (dec3cnt == 1 && dec3)  ack3 <= 1;
                                 else  nak3 <= 1;
-                                dec3cnt  <=  dec3cnt == dec3  ?  0  :  dec3cnt + 1;
+                                dec3cnt  <=  dec3cnt >= dec3  ?  1  :  dec3cnt + 1;
                                 state <= STATE_PORT3_;
                             end
                             else  state <= STATE_PORT4;
@@ -378,9 +378,9 @@ module debug_capture_module
                             end
 
             STATE_PORT4:    if (req4) begin     // Check telemetry port 4
-                                if (dec4cnt == 0 && ~&dec4)  ack4 <= 1;
+                                if (dec4cnt == 1 && dec4)  ack4 <= 1;
                                 else  nak4 <= 1;
-                                dec4cnt  <=  dec4cnt == dec4  ?  0  :  dec4cnt + 1;
+                                dec4cnt  <=  dec4cnt >= dec4  ?  1  :  dec4cnt + 1;
                                 state <= STATE_PORT4_;
                             end
                             else  state <= STATE_PORT5;
@@ -392,9 +392,9 @@ module debug_capture_module
                             end
 
             STATE_PORT5:    if (req5) begin     // Check telemetry port 5
-                                if (dec5cnt == 0 && ~&dec5)  ack5 <= 1;
+                                if (dec5cnt == 1 && dec5)  ack5 <= 1;
                                 else  nak5 <= 1;
-                                dec5cnt  <=  dec5cnt == dec5  ?  0  :  dec5cnt + 1;
+                                dec5cnt  <=  dec5cnt >= dec5  ?  1  :  dec5cnt + 1;
                                 state <= STATE_PORT5_;
                             end
                             else  state <= STATE_LOOP;

@@ -4,8 +4,9 @@
 # 1. https://pyserial.readthedocs.io/en/latest/pyserial_api.html
 #
 # author: RK
-# date:   8/2/2025 - 8/16/2025
+# date:   8/2/2025 - 8/17/2025
 
+import numpy as np
 import serial
 import struct
 
@@ -101,6 +102,26 @@ class Dap:
         if packet[2] != checksum:
             raise Exception('Corrupt response packet (checksum mismatch)')
         return data
+
+    # Read a Data-Capture-Module Dump
+    # out: returns DCM buffer data as an array of 32-bit words (numpy.ndarray of uint32)
+    def readDump(self):
+        MAX_LEN = 10_000_000   # (int) data array's max. length
+        # receive the header word, which is the number of 32-bit data words (0..MAX_LEN)
+        data = self.ser.read(4)
+        if len(data) != 4:
+            raise Exception('Corrupt Debug Capture Module dump (length field is short)')
+        n = struct.unpack('<I', data)[0]
+        if n > MAX_LEN:
+            raise Exception('Corrupt Debug Capture Module dump (invalid length field)')
+        # receive and return n data words
+        if n == 0:
+            return np.array([], dtype = np.uint32)
+        b = 4 * n       # number of bytes to read (int >0)
+        data = self.ser.read(b)
+        if len(data) != b:
+            raise Exception('Corrupt Debug Capture Module dump (data field is short)')
+        return np.array([x[0] for x in struct.iter_unpack('<I', data)], dtype = np.uint32)
 
 
 # Firmware Module 0: Basic I/O for a PYNQ-Z2 Board
@@ -228,12 +249,39 @@ class BasicIO:
 #
 class DCM:
 
-    MODULE = 1   # this firmware module's ID (int: 0..127)
+    MODULE  = 1           # this firmware module's ID (int: 0..127)
+    CONTROL = 0x80_0000   # control register's address
 
     # Intializer
     # in: dap = (Dap) debug-access-port object
     def __init__(self, dap):
         self.dap = dap
+
+    # Clear
+    # Clear the buffer.  If a telemetry packet is being appended, the
+    # clear operation will happen after the append operation completes.
+    def clear(self):
+        self.dap.write(self.MODULE, self.CONTROL, 1 << 0)
+
+    # Set Decimation on a Port
+    # in: p = (int: 0..5) telemetry port
+    #     d = (int: 0..65535) decimation is N:1 where N is in 1..65535, or 0 to disable the port
+    def setDecimation(self, p, d):
+        assert 0 <= p <= 5, 'Telemetry port must be in 0..5'
+        assert 0 <= d <= 65535, 'Decimation must be in 0..65535'
+        self.dap.write(self.MODULE, 0x80_0003 + p, d)
+
+    # Dump to a Binary File
+    # Latch the buffer's length N (a 32-bit word), download the buffer's
+    # first N 32-bit words, and optionally write them to a binary file.
+    # in: saveFn = (str or None) binary file's name to optionally write the data to
+    # out: returns the buffer's data as an array of 32-bit words (numpy.ndarray of uint32)
+    def dump(self, saveFn = None):
+        self.dap.write(self.MODULE, self.CONTROL, 1 << 1)
+        data = self.dap.readDump()
+        if saveFn != None:
+            data.tofile(saveFn)
+        return data
 
     # Print Status
     def printStatus(self):
@@ -249,9 +297,9 @@ class DCM:
         for i in range(6):
             x = self.dap.read(self.MODULE, 0x80_0003 + i)
             if x == 0:
-                desc = f'port {i} is not decimated'
-            elif x == 0xFFFF:
                 desc = f'port {i} is disabled'
+            elif x == 1:
+                desc = f'port {i} is not decimated'
             else:
-                desc = f"port {i}'s decimation is {x+1}:1"
+                desc = f"port {i}'s decimation is {x}:1"
             print(f'  dec{i}           =  {x}  =  {desc}')

@@ -8,7 +8,7 @@
 # 1. https://docs.python.org/3/library/argparse.html
 #
 # author: RK
-# date:   8/16/2025
+# date:   8/16/2025 - 8/17/2025
 
 import argparse
 import debug_access_port
@@ -25,14 +25,27 @@ def main():
                          metavar = 'BAUD_RATE',
                          type = int,
                          default = 921600,
-                         help = 'Baud rate (e.g., 921600)'
-                       )
+                         help = 'Baud rate (e.g., 921600)' )
+
+    parser.add_argument( '--dcm-clear', dest = 'dcmClear',
+                         help = 'Clear the debug capture buffer',
+                         action = 'store_true' )
+
+    parser.add_argument( '--dcm-dec', dest = 'dcmDec',
+                         metavar = ('PORT', 'DECIMATION'),
+                         nargs = 2,
+                         type = int,
+                         help = 'Set decimation on DCM port (0..5) to 1..65535 or 0 to disable the port' )
+
+    parser.add_argument( '--dcm-dump', dest = 'dcmDump',
+                         metavar = 'FILENAME',
+                         type = str,
+                         help = "Download DCM's data, and write it to a binary file" )
 
     parser.add_argument( '-p', '--port',
                          type = str,
                          default = 'COM7',
-                         help = 'Serial port (e.g., COM7)'
-                       )
+                         help = 'Serial port (e.g., COM7)' )
 
     parser.add_argument( '-s', '--status',
                          help = "Print the firmware modules' status",
@@ -45,20 +58,17 @@ def main():
     parser.add_argument( '-l', '--leds',
                          metavar = 'MASK',
                          type = int,
-                         help = "LEDs' mask (0..15)"
-                       )
+                         help = "LEDs' mask (0..15)" )
 
     parser.add_argument( '--LD4',
                          metavar = 'MASK',
                          type = int,
-                         help = "RGB LED LD4's mask (0..7)"
-                       )
+                         help = "RGB LED LD4's mask (0..7)" )
 
     parser.add_argument( '--LD5',
                          metavar = 'MASK',
                          type = int,
-                         help = "RGB LED LD5's mask (0..7)"
-                       )
+                         help = "RGB LED LD5's mask (0..7)" )
 
     print()
     args = parser.parse_args()
@@ -72,6 +82,14 @@ def main():
             dap.write(dap.basicio.MODULE, 4, args.LD4)
         if args.LD5 != None:
             dap.write(dap.basicio.MODULE, 5, args.LD5)
+        if args.dcmClear:
+            dap.dcm.clear()
+        if args.dcmDec != None:
+            p, d = args.dcmDec
+            dap.dcm.setDecimation(p, d)
+        if args.dcmDump != None:
+            data = dap.dcm.dump(args.dcmDump)
+            print(f'Wrote {len(data)} 32-bit words to binary file: {args.dcmDump}')
 
 
 if __name__ == '__main__':

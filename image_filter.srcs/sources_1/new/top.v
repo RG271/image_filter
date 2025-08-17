@@ -3,7 +3,7 @@
 // Company:
 // Engineer:        Richard D. Kaminsky, Ph.D.
 // 
-// Create Date:     7/22/2025 - 8/11/2025
+// Create Date:     7/22/2025 - 8/17/2025
 // Design Name:     image_filter
 // Module Name:     top.v
 // Project Name:
@@ -115,7 +115,7 @@ module top(
 
 
 localparam [31:0]  CREATION_DATE  =  32'h25072212,   // PL firmware's creation date in 0xYYMMDDHH format
-                   BUILD_DATE     =  32'h25081115;   // PL firmware's build date in 0xYYMMDDHH format
+                   BUILD_DATE     =  32'h25081719;   // PL firmware's build date in 0xYYMMDDHH format
 
 localparam real    CLK_FREQ       =  100e6,          // clk's frequency (Hz)
                    BAUD_RATE      =  921600;         // Debug Serial Port's baud rate in bits/s (115200 .. 921600)
@@ -216,6 +216,24 @@ basic_io  basic_io_i (
 );
 
 
+// DCM Tester -- Outputs a 2 32-bit word telemetry packet every 1 second
+wire         test_req;
+wire         test_ack;
+wire         test_nak;
+wire [31:0]  test_data;
+wire         test_valid;
+wire [25:0]  test_us_time;
+dcm_tester #(.CLK_FREQ(CLK_FREQ)) dcm_tester_i (
+    .clk(      clk           ),
+    .req(      test_req      ),
+    .ack(      test_ack      ),
+    .nak(      test_nak      ),
+    .dout(     test_data     ),
+    .valid(    test_valid    ),
+    .us_time(  test_us_time  )
+);
+
+
 // Module #1: Debug Capture Module
 debug_capture_module #(.CLK_FREQ(CLK_FREQ), .BAUD_RATE(BAUD_RATE))  debug_capture_module_i (
     .clk(       clk         ),
@@ -232,12 +250,12 @@ debug_capture_module #(.CLK_FREQ(CLK_FREQ), .BAUD_RATE(BAUD_RATE))  debug_captur
     .tx(        dcm_tx      ),
 
     // Telemetry port 0
-    .req0(      1'b0        ),
-    .ack0(                  ),
-    .nak0(                  ),
-    .din0(      32'b0       ),
-    .valid0(    1'b0        ),
-    .us_time0(              ),
+    .req0(      test_req      ),
+    .ack0(      test_ack      ),
+    .nak0(      test_nak      ),
+    .din0(      test_data     ),
+    .valid0(    test_valid    ),
+    .us_time0(  test_us_time  ),
 
     // Telemetry port 1
     .req1(      1'b0        ),
