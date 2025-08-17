@@ -1,0 +1,3 @@
+#!/bin/bash
+
+geany -i ReadMe *.{h,cpp} &

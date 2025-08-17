@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# Configure PL with top.bin, which should be in the /lib/firmware directory.
+#
+# 7/27/2025 RK
+
+if [ `uname -m` != 'armv7l' ]; then
+	echo 'ERROR: This script must be run on a PYNQ-Z2'
+	exit 1
+fi
+
+sudo sh -c 'echo top.bin >/sys/class/fpga_manager/fpga0/firmware'

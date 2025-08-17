@@ -1,0 +1,35 @@
+# Vivado generated directories
+*.cache/
+*.runs/
+*.sim/
+*.ip_user_files/
+*.hw/
+*.gen/
+
+# Log files and temporary files
+*.log
+*.jou
+*.str
+*.backup/
+*.rpt
+
+# Project-specific files that can be regenerated
+*.dir/
+*.html
+*.xml
+*.json
+*.csv
+*.txt
+*.dat
+
+# IP related files that can be regenerated
+*.xpr.backup
+*.xpr.old
+*.srcs/sources_1/ip/*/
+*.srcs/sources_1/bd/*/
+
+# Specific files to ignore
+vivado_*.log
+vivado_*.jou
+webtalk.log
+webtalk.jou

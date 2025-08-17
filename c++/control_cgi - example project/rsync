@@ -1,0 +1,31 @@
+#!/bin/bash
+#
+# Copy newer files to PYNQ-Z2 board and optionally make the C++ project.
+#
+# usage:  ./rsync [-t] [-m]
+# where:
+#   -t  =  set remote host's Linux system time
+#   -m  =  run "make" after running "rsync"
+#
+# 2/9/2023  RK
+
+if [ `uname -m` == 'armv7l' ]; then
+	echo 'ERROR: This script should not be run on the PYNQ-Z2'
+	exit 1
+fi
+
+REMOTE_DIR='Documents/c++/control_cgi'
+
+source ../../../remote_host
+
+if [ "$1" == '-t' ]; then
+	shift
+	ssh root@$REMOTE_HOST date -s `date "+'%Y-%m-%d %H:%M:%S'"`
+fi
+
+rsync -av * xilinx@$REMOTE_HOST:$REMOTE_DIR/
+
+if [ "$1" == '-m' ]; then
+	shift
+	ssh xilinx@$REMOTE_HOST "make -C ~/$REMOTE_DIR"
+fi
