@@ -4,7 +4,7 @@
 # 1. https://pyserial.readthedocs.io/en/latest/pyserial_api.html
 #
 # author: RK
-# date:   8/2/2025 - 8/17/2025
+# date:   8/2/2025 - 8/23/2025
 
 import numpy as np
 import serial
@@ -114,14 +114,15 @@ class Dap:
         n = struct.unpack('<I', data)[0]
         if n > MAX_LEN:
             raise Exception('Corrupt Debug Capture Module dump (invalid length field)')
-        # receive and return n data words
-        if n == 0:
-            return np.array([], dtype = np.uint32)
-        b = 4 * n       # number of bytes to read (int >0)
+        # receive and return n data words + 1 checksum word, where n>=0
+        b = 4 * (n + 1)     # number of bytes to read (int >0)
         data = self.ser.read(b)
         if len(data) != b:
-            raise Exception('Corrupt Debug Capture Module dump (data field is short)')
-        return np.array([x[0] for x in struct.iter_unpack('<I', data)], dtype = np.uint32)
+            raise Exception('Corrupt Debug Capture Module dump (too few bytes received)')
+        a = np.array([x[0] for x in struct.iter_unpack('<I', data)], dtype = np.uint32)
+        if a.sum(dtype=np.uint32) != 0xFFFFFFFF:
+            raise Exception('Corrupt Debug Capture Module dump (invalid checksum)')
+        return a[:-1]
 
 
 # Firmware Module 0: Basic I/O for a PYNQ-Z2 Board

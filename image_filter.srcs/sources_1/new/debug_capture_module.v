@@ -3,7 +3,7 @@
 // Company:
 // Engineer:        Richard D. Kaminsky, Ph.D.
 // 
-// Create Date:     7/31/2025 - 8/11/2025
+// Create Date:     7/31/2025 - 8/23/2025
 // Design Name:     image_filter
 // Module Name:     debug_capture_module.v
 // Project Name:
@@ -26,7 +26,9 @@
 //              31:2   --    Reserved (Always 0)
 //              1     dump   Write a 1 to dump the buffer to the Debug Serial Port.  When that 1 is written, the
 //                             buffer's length N is latched, N is then transmitted as a 32-bit word (little endian)
-//                             followed by the buffer's first N 32-bit words.  Lastly this flag will reset to 0.
+//                             followed by the buffer's first N 32-bit words, and a checksum word computed as
+//                             0xFFFFFFFF - sum of the N words.  Lastly this flag will reset to 0 (this will happen
+//                             immediately before the checksum word is transmitted).
 //              0     clear  Write a 1 to clear the buffer.  If a telemetry packet is being appended, the
 //                             clear operation will happen after the append operation completes.  When done,
 //                             this flag will reset to 0.
@@ -35,17 +37,17 @@
 //
 //        24'h800002        size      ro     Buffer's capacity in 32-bit words (always 1<<ADDR_WIDTH)
 //
-//        24'h800003        dec0      rw     Telemetry port 0's decimation - 1 (0..65534, or 65535 to discard all packets; default is 65535)
+//        24'h800003        dec0      rw     Telemetry port 0's decimation (1..65535, or 0 to discard all packets; initially 0)
 //
-//        24'h800004        dec1      rw     Telemetry port 1's decimation - 1 (0..65534, or 65535 to discard all packets; default is 65535)
+//        24'h800004        dec1      rw     Telemetry port 1's decimation (1..65535, or 0 to discard all packets; initially 0)
 //
-//        24'h800005        dec2      rw     Telemetry port 2's decimation - 1 (0..65534, or 65535 to discard all packets; default is 65535)
+//        24'h800005        dec2      rw     Telemetry port 2's decimation (1..65535, or 0 to discard all packets; initially 0)
 //
-//        24'h800006        dec3      rw     Telemetry port 3's decimation - 1 (0..65534, or 65535 to discard all packets; default is 65535)
+//        24'h800006        dec3      rw     Telemetry port 3's decimation (1..65535, or 0 to discard all packets; initially 0)
 //
-//        24'h800007        dec4      rw     Telemetry port 4's decimation - 1 (0..65534, or 65535 to discard all packets; default is 65535)
+//        24'h800007        dec4      rw     Telemetry port 4's decimation (1..65535, or 0 to discard all packets; initially 0)
 //
-//        24'h800008        dec5      rw     Telemetry port 5's decimation - 1 (0..65534, or 65535 to discard all packets; default is 65535)
+//        24'h800008        dec5      rw     Telemetry port 5's decimation (1..65535, or 0 to discard all packets; initially 0)
 //
 // Dependencies: 
 // 
@@ -202,12 +204,12 @@ module debug_capture_module
 
     // DAP Interface
 
-    reg                 clear       =  0;   // clear-buffer strobe: pulses for 1 clk cycle to indicate buffer should be cleared after the current tele packet, if any
-    reg                 clearing    =  0;   // clear-buffer-pending flag
-    reg                 dump        =  0;   // start dumping strobe: pulses for 1 clk cycle to indicate the buffer should be dumped (i.e., transmitted out the serial port)
-    reg                 dumping     =  0;   // buffer-is-being-transmitted-out-the-serial-port flag
-    reg [ADDR_WIDTH:0]  dump_count  =  0;   // number of 32-bit words left to send (0 .. 1<<ADDR_WIDTH)
-    wire dump_count_zero  =  dump_count == 0;
+    reg                 clear          =  0;   // clear-buffer strobe: pulses for 1 clk cycle to indicate buffer should be cleared after the current tele packet, if any
+    reg                 clearing       =  0;   // clear-buffer-pending flag
+    reg                 dump           =  0;   // start dumping strobe: pulses for 1 clk cycle to indicate the buffer should be dumped (i.e., transmitted out the serial port)
+    reg                 dumping        =  0;   // buffer-is-being-transmitted-out-the-serial-port flag
+    reg [31:0]          dump_checksum  =  ~0;  // checksum computed as -sum(data); the header word is excluded from this sum
+    reg [ADDR_WIDTH:0]  dump_count     =  0;   // number of 32-bit words left to send (0 .. 1<<ADDR_WIDTH)
 
     reg rva      =  0;    // read-from-block-mem-port-a-is-valid
     reg rva_z    =  0;    // future read-from-block-mem-port-a-is-valid 
@@ -281,19 +283,26 @@ module debug_capture_module
         end
 
         if (dumping && !uat32_busy) begin
-            if (dump_count_zero)  dumping <= 0;
-            uat32_data   <=  doutb;
-            uat32_valid  <=  ~dump_count_zero;
+            if (dump_count) begin
+                uat32_data     <=  doutb;
+                dump_checksum  <=  dump_checksum - doutb;
+            end
+            else begin
+                uat32_data  <=  dump_checksum;
+                dumping     <=  0;
+            end
+            uat32_valid  <=  1;
             addrb        <=  addrb + 1;
             dump_count   <=  dump_count - 1;
         end
 
         if (dump) begin
-            addrb        <=  0;
-            dump_count   <=  count;
-            uat32_data   <=  count;
-            uat32_valid  <=  1;
-            dumping      <=  1;
+            addrb          <=  0;
+            dump_count     <=  count;
+            uat32_data     <=  count;
+            uat32_valid    <=  1;
+            dump_checksum  <=  ~0;
+            dumping        <=  1;
         end
 
     end

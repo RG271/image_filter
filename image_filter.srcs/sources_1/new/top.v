@@ -3,7 +3,7 @@
 // Company:
 // Engineer:        Richard D. Kaminsky, Ph.D.
 // 
-// Create Date:     7/22/2025 - 8/17/2025
+// Create Date:     7/22/2025 - 8/23/2025
 // Design Name:     image_filter
 // Module Name:     top.v
 // Project Name:
@@ -115,7 +115,7 @@ module top(
 
 
 localparam [31:0]  CREATION_DATE  =  32'h25072212,   // PL firmware's creation date in 0xYYMMDDHH format
-                   BUILD_DATE     =  32'h25081719;   // PL firmware's build date in 0xYYMMDDHH format
+                   BUILD_DATE     =  32'h25082316;   // PL firmware's build date in 0xYYMMDDHH format
 
 localparam real    CLK_FREQ       =  100e6,          // clk's frequency (Hz)
                    BAUD_RATE      =  921600;         // Debug Serial Port's baud rate in bits/s (115200 .. 921600)
